@@ -25,6 +25,7 @@ MAD-greenhouse/
 ├── fix_dashboard.sh        # patch old Dash app.run_server -> app.run
 ├── diagnose_flipper.sh     # serial-port / permission diagnostics
 ├── docs/
+│   ├── ARCHITECTURE.md     # step-by-step wiring, data flow & AI deep dive (with diagrams)
 │   └── MAD_Project_Presentation.pptx   # technical deep-dive slide deck
 ├── greenhouseai/           # Greenhouse Neural Core web component + live server
 └── mad_project/
@@ -45,6 +46,11 @@ MAD-greenhouse/
 > **Cloning for the first time?** Run `cp mad_project/.env.example mad_project/.env`,
 > then follow the Quickstart below. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
 > team branch/PR workflow.
+>
+> **Want the full picture?** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) documents every
+> connection and flow step by step — hardware wiring tables, the life of one sensor reading,
+> the AI training/inference/retraining pipeline, dashboard panels, the wiring status page,
+> and every port — with Mermaid diagrams that render right on GitHub.
 
 ---
 
