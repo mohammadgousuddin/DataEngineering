@@ -1,0 +1,34 @@
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# --- Generated data & models (rebuilt by the stack) ---
+mad_project/data/*.csv
+mad_project/model/*.pkl
+mad_project/greenhouse_training.csv
+greenhouse.csv
+training_data.csv
+
+# --- Local environment (copy .env.example -> .env) ---
+mad_project/.env
+
+# --- greenhouseai runtime artifacts ---
+greenhouseai/uploads/
+greenhouseai/.thumbnail
+
+# --- Docker / editor / OS ---
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# --- Keep placeholder dirs ---
+!mad_project/data/.gitkeep
+!mad_project/model/.gitkeep
+# greenhouseai/greenhouse.csv is seed data for the web component — tracked
+!greenhouseai/greenhouse.csv
