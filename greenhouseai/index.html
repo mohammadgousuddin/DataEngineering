@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="./greenhouse-data.js"></script>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%;background:#06120c;overflow:hidden}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(70,224,138,0.22);border-radius:99px}
+@keyframes ncpulse{0%,100%{opacity:.45}50%{opacity:1}}
+input[type=range]{-webkit-appearance:none;appearance:none;height:4px;border-radius:99px;background:rgba(255,255,255,0.12);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#46e08a;box-shadow:0 0 10px #46e08a;cursor:pointer}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border:none;border-radius:50%;background:#46e08a;box-shadow:0 0 10px #46e08a;cursor:pointer}
+button:hover{filter:brightness(1.15)}
+</style>
+</helmet>
+<div style="display:flex;flex-direction:column;height:100vh;width:100%;background:#06120c;color:#e8f5ec;font-family:'Space Grotesk',system-ui,sans-serif;overflow:hidden">
+
+  <header style="display:flex;align-items:center;gap:16px;padding:13px 22px;border-bottom:1px solid rgba(70,224,138,0.12);background:rgba(8,20,14,0.6);flex:none">
+    <div style="width:38px;height:38px;border-radius:11px;background:radial-gradient(circle at 35% 30%,#7dffc0,#1f8f5e 60%,#0c3a26);box-shadow:0 0 18px rgba(70,224,138,0.5),inset 0 0 8px rgba(255,255,255,0.3);flex:none"></div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <div style="font-size:16px;font-weight:700;letter-spacing:.5px;color:#eafff2">GREENHOUSE · NEURAL CORE</div>
+      <div style="font-size:10px;letter-spacing:2px;color:#5d7568;font-family:'IBM Plex Mono',monospace">UAE GREENHOUSE AI · FAN + PUMP DECISION NET</div>
+    </div>
+    <div style="flex:1"></div>
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:99px;background:rgba(13,33,24,0.7);border:1px solid rgba(70,224,138,0.18);font-size:11.5px">
+      <span style="{{ sourceDotStyle }}"></span><span style="{{ sourceTextStyle }}">{{ sourceLabel }}</span>
+    </div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7f9e8c;padding:7px 12px;border-radius:9px;background:rgba(255,255,255,0.03);border:1px solid rgba(70,224,138,0.1)">{{ sessionLabel }}</div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;color:#eafff2;font-weight:500">{{ timeStr }}</div>
+      <div style="display:flex;align-items:center;gap:6px"><span style="{{ dayStyle }}">{{ dayGlyph }}</span><span style="font-size:9.5px;letter-spacing:1.5px;color:#5d7568">{{ dayLabel }} · {{ dateStr }}</span></div>
+    </div>
+  </header>
+
+  <main style="flex:1;display:flex;min-height:0;overflow:hidden">
+    <div id="nc-stage" style="flex:1;position:relative;min-width:0;background:radial-gradient(1100px 700px at 50% 42%,#0c2418,#06120c 80%)">
+      <canvas id="nc-canvas" style="position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none"></canvas>
+      <div id="nc-labels" style="position:absolute;inset:0;pointer-events:none;overflow:hidden"></div>
+
+      <div style="position:absolute;left:16px;bottom:14px;display:flex;gap:14px;font-size:10px;letter-spacing:1px;color:#7f9e8c;font-family:'IBM Plex Mono',monospace;pointer-events:none">
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#ff8a5b;box-shadow:0 0 8px #ff8a5b"></span>SENSOR INPUTS</span>
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#46e08a;box-shadow:0 0 8px #46e08a"></span>HIDDEN</span>
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#46d6e0;box-shadow:0 0 8px #46d6e0"></span>DECISIONS</span>
+      </div>
+
+      <div style="position:absolute;right:16px;bottom:14px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:10px;letter-spacing:1px;color:#5d7568;font-family:'IBM Plex Mono',monospace">DRAG · ORBIT / SCROLL · ZOOM</span>
+        <button onClick="{{ toggleRotate }}" style="cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;color:#cdebd9;background:rgba(13,33,24,0.8);border:1px solid rgba(70,224,138,0.2);padding:6px 10px;border-radius:8px">{{ rotateLabel }}</button>
+      </div>
+
+      <sc-if value="{{ booting }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:#06120c;z-index:5">
+          <div style="width:54px;height:54px;border-radius:50%;background:radial-gradient(circle,#46e08a,transparent 70%);animation:ncpulse 1.4s infinite"></div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:3px;color:#7f9e8c">INITIALISING NEURAL CORE…</div>
+        </div>
+      </sc-if>
+    </div>
+
+    <aside style="width:362px;flex:none;display:flex;flex-direction:column;gap:14px;padding:16px;overflow-y:auto;background:rgba(8,20,14,0.5);border-left:1px solid rgba(70,224,138,0.1)">
+
+      <div style="background:rgba(13,33,24,0.5);border:1px solid rgba(70,224,138,0.12);border-radius:14px;padding:16px">
+        <div style="font-size:11px;letter-spacing:2px;color:#46e08a;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;border-radius:50%;background:#46e08a;box-shadow:0 0 8px #46e08a"></span>LIVE SENSORS</div>
+        <sc-for list="{{ sensors }}" as="s" hint-placeholder-count="8">
+          <div style="padding:7px 0;border-bottom:1px solid rgba(70,224,138,0.06)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <span style="{{ s.dotStyle }}"></span>
+              <span style="font-size:11px;letter-spacing:1.5px;color:#7f9e8c;font-weight:600">{{ s.label }}</span>
+              <span style="flex:1"></span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:15px;color:#e8f5ec;font-weight:500">{{ s.valStr }}</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5d7568;margin-left:3px;width:30px">{{ s.unit }}</span>
+            </div>
+            <div style="height:4px;border-radius:99px;background:rgba(255,255,255,0.05);overflow:hidden"><div style="{{ s.barStyle }}"></div></div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="background:rgba(13,33,24,0.5);border:1px solid rgba(70,224,138,0.12);border-radius:14px;padding:16px">
+        <div style="font-size:11px;letter-spacing:2px;color:#46d6e0;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;border-radius:50%;background:#46d6e0;box-shadow:0 0 8px #46d6e0"></span>AI DECISION</div>
+        <sc-for list="{{ decisions }}" as="d" hint-placeholder-count="2">
+          <div style="padding:12px;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(70,224,138,0.08);margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <span style="{{ d.dotStyle }}"></span>
+              <span style="font-size:12.5px;font-weight:700;letter-spacing:1px;color:#e8f5ec">{{ d.label }}</span>
+              <span style="font-size:9.5px;letter-spacing:1.5px;color:#5d7568">{{ d.sub }}</span>
+              <span style="flex:1"></span>
+              <span style="{{ d.actualStyle }}">{{ d.actualText }}</span>
+            </div>
+            <div style="display:flex;align-items:flex-end;gap:14px">
+              <div style="{{ d.stateStyle }}">{{ d.state }}</div>
+              <div style="flex:1">
+                <div style="display:flex;justify-content:space-between;font-size:9.5px;letter-spacing:.5px;color:#7f9e8c;margin-bottom:5px">
+                  <span>AI CONFIDENCE</span><span style="font-family:'IBM Plex Mono',monospace;color:#e8f5ec">{{ d.confText }}</span>
+                </div>
+                <div style="height:6px;border-radius:99px;background:rgba(255,255,255,0.06);overflow:hidden"><div style="{{ d.confStyle }}"></div></div>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="background:rgba(13,33,24,0.5);border:1px solid rgba(70,224,138,0.12);border-radius:14px;padding:16px">
+        <div style="font-size:11px;letter-spacing:2px;color:#9b8cff;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;border-radius:50%;background:#9b8cff;box-shadow:0 0 8px #9b8cff"></span>FEATURE INFLUENCE</div>
+        <div style="font-size:9.5px;color:#5d7568;margin-bottom:12px;letter-spacing:.5px">RELATIVE MODEL IMPORTANCE · GRADIENT BOOSTING</div>
+        <sc-for list="{{ influences }}" as="f" hint-placeholder-count="8">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+            <span style="width:66px;font-size:10px;letter-spacing:.5px;color:#7f9e8c;text-align:right;flex:none">{{ f.label }}</span>
+            <div style="flex:1;height:8px;border-radius:99px;background:rgba(255,255,255,0.05);overflow:hidden"><div style="{{ f.barStyle }}"></div></div>
+            <span style="width:32px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8fb3a0;text-align:right;flex:none">{{ f.valStr }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+    </aside>
+  </main>
+
+  <footer style="display:flex;align-items:center;gap:18px;padding:13px 22px;background:rgba(8,20,14,0.85);border-top:1px solid rgba(70,224,138,0.12);flex:none">
+    <button onClick="{{ togglePlay }}" style="width:42px;height:42px;border-radius:50%;border:1px solid rgba(70,224,138,0.3);background:rgba(70,224,138,0.12);color:#46e08a;font-size:13px;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center">{{ playGlyph }}</button>
+    <div style="display:flex;gap:3px;background:rgba(255,255,255,0.04);padding:4px;border-radius:10px;flex:none">
+      <sc-for list="{{ speedBtns }}" as="b" hint-placeholder-count="4"><button onClick="{{ b.on }}" style="{{ b.style }}">{{ b.label }}</button></sc-for>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:6px;min-width:140px">
+      <input type="range" min="0" max="{{ maxIdx }}" value="{{ idx }}" onChange="{{ onScrub }}" style="width:100%;cursor:pointer">
+      <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5d7568"><span>ROW {{ counter }}</span><span>{{ uaeStr }}</span></div>
+    </div>
+    <button onClick="{{ liveBtn }}" style="{{ liveBtnStyle }}">{{ liveBtnLabel }}</button>
+  </footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100vw&quot;,&quot;height&quot;:&quot;100vh&quot;},&quot;wsEndpoint&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;ws://localhost:8765&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Live data&quot;},&quot;autoRotate&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Scene&quot;},&quot;pulseDensity&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:130,&quot;min&quot;:40,&quot;max&quot;:220,&quot;step&quot;:10,&quot;unit&quot;:&quot;pulses&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Scene&quot;},&quot;glowStrength&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:0.6,&quot;min&quot;:0,&quot;max&quot;:1,&quot;step&quot;:0.05,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Scene&quot;}}">
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.state = {
+      ready:false, booting:true,
+      idx:0, total:0,
+      playing:true, speed:1,
+      source:'csv',
+      reading:{t:0,temp_dht:0,temp_delta:0,humidity:0,soil_moisture:0,co2:0,light_intensity:0,heat_index:0,vpd_kpa:0,fan:0,pump:0,session:0},
+      pred:{fanProb:0.5,fanPred:0,fanActual:0,pumpProb:0.5,pumpPred:0,pumpActual:0},
+      clock:{timeStr:'--:--:--',dateStr:'',isDay:true}
+    };
+    this.wsEndpoint = props.wsEndpoint || 'ws://localhost:8765';
+    this.autoRotate = props.autoRotate !== false;
+    this.pulseDensity = props.pulseDensity || 130;
+    this.glowStrength = (props.glowStrength != null) ? props.glowStrength : 0.6;
+
+    this.inputs = [
+      {key:'temp_dht',        label:'TEMP',     unit:'°C',  color:'#ff8a5b', imp:0.15},
+      {key:'temp_delta',      label:'ΔTEMP',    unit:'°C',  color:'#f2c14e', imp:0.06},
+      {key:'humidity',        label:'HUMIDITY', unit:'%',   color:'#4fd1c5', imp:0.12},
+      {key:'soil_moisture',   label:'SOIL',     unit:'%',   color:'#3a9bf0', imp:0.13},
+      {key:'co2',             label:'CO\u2082', unit:'ppm', color:'#9b8cff', imp:0.10},
+      {key:'light_intensity', label:'LIGHT',    unit:'lux', color:'#d6e84f', imp:0.08},
+      {key:'heat_index',      label:'HEAT IDX', unit:'°C',  color:'#ff6b5b', imp:0.20},
+      {key:'vpd_kpa',         label:'VPD',      unit:'kPa', color:'#46e08a', imp:0.16}
+    ];
+    this.outputs = [
+      {key:'fan',  label:'FAN',  sub:'· COOLING',    color:'#46d6e0'},
+      {key:'pump', label:'PUMP', sub:'· IRRIGATION', color:'#3a9bf0'}
+    ];
+    this.stats = {
+      temp_dht:{min:27.59,max:43.18,mean:31.504,std:3.383},
+      temp_delta:{min:0,max:1.42,mean:0.324,std:0.24},
+      humidity:{min:11.07,max:43.24,mean:20.311,std:5.945},
+      soil_moisture:{min:15.79,max:47.78,mean:25.571,std:5.205},
+      co2:{min:105.5,max:697.9,mean:240.497,std:135.085},
+      light_intensity:{min:0,max:10896.8,mean:1984.06,std:2639.302},
+      heat_index:{min:26.39,max:58.68,mean:30.638,std:6.24},
+      vpd_kpa:{min:3.08,max:5.51,mean:3.688,std:0.451}
+    };
+    this._disp = null; this._act = null;
+    this.dragging = false; this.acc = 0;
+    this.animate = this.animate.bind(this);
+  }
+
+  /* ---------- math ---------- */
+  mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+  net(x){
+    const sig=v=>1/(1+Math.exp(-v));
+    const c=x.map(v=>(v-0.5)*2);
+    const h1=this.W1.map((w,i)=>sig(w.reduce((a,wj,j)=>a+wj*c[j],0)+this.b1[i]));
+    const h1c=h1.map(v=>(v-0.5)*2);
+    const h2=this.W2.map((w,i)=>sig(w.reduce((a,wj,j)=>a+wj*h1c[j],0)+this.b2[i]));
+    return {h1,h2};
+  }
+  predict(r){
+    const z=(k,v)=>(v-this.stats[k].mean)/(this.stats[k].std||1);
+    const sig=x=>1/(1+Math.exp(-x));
+    const fanZ = 1.5*z('heat_index',r.heat_index)+1.0*z('temp_dht',r.temp_dht)+0.9*z('vpd_kpa',r.vpd_kpa)+0.4*z('co2',r.co2)-0.6*z('humidity',r.humidity)+0.4;
+    const pumpZ = -1.7*z('soil_moisture',r.soil_moisture)+0.8*z('vpd_kpa',r.vpd_kpa)+0.6*z('temp_dht',r.temp_dht)+0.3*z('heat_index',r.heat_index)+0.2;
+    const fanProb=sig(fanZ), pumpProb=sig(pumpZ);
+    return {fanProb,fanPred:fanProb>0.5?1:0,fanActual:(r.fan==null?null:r.fan),
+            pumpProb,pumpPred:pumpProb>0.5?1:0,pumpActual:(r.pump==null?null:r.pump)};
+  }
+  rowToReading(row){ return {t:row[0],temp_dht:row[1],temp_delta:row[3],humidity:row[4],soil_moisture:row[5],co2:row[6],light_intensity:row[7],heat_index:row[8],vpd_kpa:row[9],fan:row[10],pump:row[11],session:row[12]}; }
+  setActivations(r,pred){
+    const xnorm=this.inputs.map(d=>{const s=this.stats[d.key];const v=(r[d.key]-s.min)/((s.max-s.min)||1);return Math.max(0,Math.min(1,v));});
+    const {h1,h2}=this.net(xnorm);
+    this._act=xnorm.concat(h1,h2,[pred.fanProb,pred.pumpProb]);
+    if(!this._disp) this._disp=this._act.slice();
+  }
+  clockFor(tSec){
+    const d=new Date((tSec+14400)*1000);
+    const p2=n=>String(n).padStart(2,'0');
+    const hh=d.getUTCHours();
+    return {timeStr:p2(hh)+':'+p2(d.getUTCMinutes())+':'+p2(d.getUTCSeconds()),
+            dateStr:d.toUTCString().slice(5,11).toUpperCase(),
+            isDay:hh>=6&&hh<18};
+  }
+
+  /* ---------- data flow ---------- */
+  updateFromRow(i,push){
+    const r=this.rowToReading(this.rows[i]); this.cur=r;
+    const pred=this.predict(r); this.setActivations(r,pred);
+    if(push) this.setState({idx:i, reading:r, pred, clock:this.clockFor(r.t)});
+  }
+  advance(){ let i=this.state.idx+1; if(i>=this.state.total) i=0; this.updateFromRow(i,true); }
+  seek(i){ if(this.state.source==='live'){ this.setState({source:'csv'}); } this.acc=0; this.updateFromRow(i,true); }
+
+  /* ---------- live endpoint ---------- */
+  connectLive(){
+    if(this.ws){ try{this.ws.close();}catch(e){} this.ws=null; }
+    let ws;
+    try{ ws=new WebSocket(this.wsEndpoint); }catch(e){ this.setState({source:'csv',playing:true}); return; }
+    this.ws=ws; this.setState({source:'connecting'});
+    let opened=false;
+    ws.onopen=()=>{ opened=true; this.setState({source:'live',playing:false}); };
+    ws.onmessage=(e)=>{ try{ this.ingestLive(JSON.parse(e.data)); }catch(_){} };
+    ws.onerror=()=>{ if(!opened){ this.setState({source:'csv',playing:true}); } };
+    ws.onclose=()=>{ if(this.state.source!=='csv'){ this.setState({source:'csv',playing:true}); } };
+    this._liveTimer=setTimeout(()=>{ if(!opened && this.ws===ws){ try{ws.close();}catch(_){} this.setState({source:'csv',playing:true}); } },2600);
+  }
+  ingestLive(o){
+    const cur=this.cur||{};
+    const g=k=> (o[k]!=null?+o[k]:(cur[k]||0));
+    const st=v=> v==null?null:((v===1||v==='ON'||v===true)?1:0);
+    const r={t:o.timestamp!=null?+o.timestamp:Date.now()/1000,
+      temp_dht:g('temp_dht'),temp_delta:g('temp_delta'),humidity:g('humidity'),soil_moisture:g('soil_moisture'),
+      co2:g('co2'),light_intensity:g('light_intensity'),heat_index:g('heat_index'),vpd_kpa:g('vpd_kpa'),
+      fan:st(o.fan_state!=null?o.fan_state:o.fan), pump:st(o.pump_state!=null?o.pump_state:o.pump), session:cur.session||0};
+    this.cur=r; const pred=this.predict(r); this.setActivations(r,pred);
+    this.setState({reading:r,pred,clock:this.clockFor(r.t)});
+  }
+
+  /* ---------- lifecycle ---------- */
+  componentDidMount(){
+    const rng=this.mulberry32(1337), rnd=()=>rng()*2-1;
+    this.W1=Array.from({length:10},()=>Array.from({length:8},rnd)); this.b1=Array.from({length:10},rnd);
+    this.W2=Array.from({length:7},()=>Array.from({length:10},rnd)); this.b2=Array.from({length:7},rnd);
+    this.waitReady();
+  }
+  waitReady(){
+    if(!window.GREENHOUSE_DATA || !window.THREE){ this._wt=setTimeout(()=>this.waitReady(),120); return; }
+    const D=window.GREENHOUSE_DATA; this.rows=D.rows;
+    if(D.stats) this.stats=Object.assign({},this.stats,D.stats);
+    this._v=new window.THREE.Vector3();
+    this.setState({total:this.rows.length});
+    this.updateFromRow(0,true);
+    this.initThree();
+    this.setState({ready:true,booting:false});
+  }
+  componentWillUnmount(){
+    if(this.raf) cancelAnimationFrame(this.raf);
+    if(this._wt) clearTimeout(this._wt);
+    if(this._liveTimer) clearTimeout(this._liveTimer);
+    if(this.ws){ try{this.ws.close();}catch(e){} }
+    if(this.ro) this.ro.disconnect();
+    if(this._orbitCleanup) this._orbitCleanup();
+    if(this.three && this.three.renderer){ try{this.three.renderer.dispose();}catch(e){} }
+    this.three=null;
+  }
+
+  /* ---------- three.js ---------- */
+  makeGlow(THREE){
+    const c=document.createElement('canvas'); c.width=c.height=64;
+    const g=c.getContext('2d'); const gr=g.createRadialGradient(32,32,0,32,32,32);
+    gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(0.25,'rgba(255,255,255,0.6)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+    g.fillStyle=gr; g.fillRect(0,0,64,64); return new THREE.CanvasTexture(c);
+  }
+  makeLabel(layer,text,color,side){
+    const el=document.createElement('div'); el.textContent=text;
+    el.style.cssText="position:absolute;left:0;top:0;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;font-weight:500;color:#d8f3e6;white-space:nowrap;padding:2px 7px;border-radius:5px;background:rgba(6,18,12,0.6);border:1px solid "+color+"55;text-shadow:0 0 6px "+color+";will-change:transform";
+    layer.appendChild(el); return el;
+  }
+  initThree(){
+    const THREE=window.THREE;
+    const stage=document.getElementById('nc-stage');
+    const canvas=document.getElementById('nc-canvas');
+    const labelLayer=document.getElementById('nc-labels');
+    if(!stage||!canvas||!THREE) return;
+    const w=stage.clientWidth||900, h=stage.clientHeight||600;
+    let renderer;
+    try{ renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'}); }
+    catch(e){ labelLayer.innerHTML='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#7f9e8c;font-family:monospace;font-size:12px">WebGL unavailable on this device</div>'; return; }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
+    renderer.setSize(w,h,false);
+    const scene=new THREE.Scene(); scene.fog=new THREE.FogExp2(0x06120c,0.032);
+    const camera=new THREE.PerspectiveCamera(50,w/h,0.1,120);
+    this.cam={radius:19,theta:0.6,phi:1.22,target:new THREE.Vector3(0,0,0)};
+    const glowTex=this.makeGlow(THREE);
+    this.three={renderer,scene,camera,glowTex,w,h,labelLayer};
+    this.buildGraph(THREE,scene,glowTex,labelLayer);
+    this.bindOrbit(canvas);
+    this.ro=new ResizeObserver(()=>this.onResize()); this.ro.observe(stage);
+    this.updateCamera();
+    this.last=performance.now(); this.acc=0;
+    this.raf=requestAnimationFrame(this.animate);
+  }
+  buildGraph(THREE,scene,glowTex,labelLayer){
+    const spreadY=(i,n,H)=> n===1?0:H*(i/(n-1)-0.5);
+    const zf=(s)=>{const x=Math.sin(s*127.1)*43758.5453; return ((x-Math.floor(x))-0.5)*2.6;};
+    const nodes=[]; let gi=0;
+    if(!this._sphereGeo) this._sphereGeo=new THREE.SphereGeometry(1,18,18);
+    const addNode=(x,y,z,rad,colorHex,type,label,side,key)=>{
+      const color=new THREE.Color(colorHex);
+      const mesh=new THREE.Mesh(this._sphereGeo,new THREE.MeshBasicMaterial({color:color.clone()}));
+      mesh.position.set(x,y,z); mesh.scale.setScalar(rad); scene.add(mesh);
+      const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:color.clone(),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0.4}));
+      sprite.position.set(x,y,z); sprite.scale.setScalar(rad*4); scene.add(sprite);
+      const node={mesh,sprite,base:rad,color0:color,type,ai:gi++,pos:new THREE.Vector3(x,y,z),key};
+      if(label){ node.labelEl=this.makeLabel(labelLayer,label,colorHex,side); node.labelSide=side; }
+      nodes.push(node); return node;
+    };
+    const inN=this.inputs.map((d,i)=>addNode(-7.5,spreadY(i,8,9.6),zf(i),0.34,d.color,'input',d.label,'left',d.key));
+    const h1N=Array.from({length:10},(_,i)=>addNode(-2.6,spreadY(i,10,9.8),zf(100+i),0.23,'#46e08a','hidden'));
+    const h2N=Array.from({length:7},(_,i)=>addNode(2.2,spreadY(i,7,7.4),zf(220+i),0.27,'#5ef0c0','hidden'));
+    const outN=this.outputs.map((d,i)=>addNode(7.5,spreadY(i,2,3.4),0,0.55,d.color,'output',d.label,'right',d.key));
+    this.nodes=nodes;
+    const edges=[]; const connect=(A,B)=>{A.forEach(a=>B.forEach(b=>edges.push({a,b})));};
+    connect(inN,h1N); connect(h1N,h2N); connect(h2N,outN); this.edges=edges;
+    const pos=new Float32Array(edges.length*6), col=new Float32Array(edges.length*6);
+    edges.forEach((e,i)=>{ const o=i*6, c=e.a.color0;
+      pos[o]=e.a.pos.x;pos[o+1]=e.a.pos.y;pos[o+2]=e.a.pos.z;
+      pos[o+3]=e.b.pos.x;pos[o+4]=e.b.pos.y;pos[o+5]=e.b.pos.z;
+      col[o]=c.r*0.4;col[o+1]=c.g*0.4;col[o+2]=c.b*0.4;col[o+3]=c.r*0.4;col[o+4]=c.g*0.4;col[o+5]=c.b*0.4;
+    });
+    const egeo=new THREE.BufferGeometry();
+    egeo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    egeo.setAttribute('color',new THREE.BufferAttribute(col,3));
+    const lines=new THREE.LineSegments(egeo,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0.15,blending:THREE.AdditiveBlending,depthWrite:false}));
+    scene.add(lines);
+    const N=Math.max(20,Math.min(260,this.pulseDensity|0));
+    this.parts=Array.from({length:N},()=>({e:edges[(Math.random()*edges.length)|0],t:Math.random(),sp:0.5+Math.random()*0.8}));
+    const ppos=new Float32Array(N*3), pcol=new Float32Array(N*3);
+    const pgeo=new THREE.BufferGeometry();
+    pgeo.setAttribute('position',new THREE.BufferAttribute(ppos,3));
+    pgeo.setAttribute('color',new THREE.BufferAttribute(pcol,3));
+    const points=new THREE.Points(pgeo,new THREE.PointsMaterial({size:0.5,map:glowTex,vertexColors:true,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true}));
+    scene.add(points);
+    this.three.points=points; this.three.ppos=ppos; this.three.pcol=pcol; this.three.lines=lines;
+  }
+  bindOrbit(canvas){
+    let px=0,py=0;
+    const down=e=>{ this.dragging=true; px=e.clientX; py=e.clientY; if(canvas.setPointerCapture){try{canvas.setPointerCapture(e.pointerId);}catch(_){}} };
+    const move=e=>{ if(!this.dragging)return; this.cam.theta-=(e.clientX-px)*0.006; this.cam.phi-=(e.clientY-py)*0.006; px=e.clientX; py=e.clientY; };
+    const up=()=>{ this.dragging=false; };
+    const wheel=e=>{ e.preventDefault(); this.cam.radius=Math.max(9,Math.min(36,this.cam.radius*(1+(e.deltaY>0?0.08:-0.08)))); };
+    canvas.addEventListener('pointerdown',down); canvas.addEventListener('pointermove',move);
+    window.addEventListener('pointerup',up); canvas.addEventListener('wheel',wheel,{passive:false});
+    this._orbitCleanup=()=>{ canvas.removeEventListener('pointerdown',down); canvas.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); canvas.removeEventListener('wheel',wheel); };
+  }
+  updateCamera(){
+    const c=this.cam; const phi=Math.max(0.25,Math.min(Math.PI-0.25,c.phi));
+    this.three.camera.position.set(
+      c.target.x+c.radius*Math.sin(phi)*Math.cos(c.theta),
+      c.target.y+c.radius*Math.cos(phi),
+      c.target.z+c.radius*Math.sin(phi)*Math.sin(c.theta));
+    this.three.camera.lookAt(c.target);
+  }
+  onResize(){
+    if(!this.three)return; const stage=document.getElementById('nc-stage'); if(!stage)return;
+    const w=stage.clientWidth,h=stage.clientHeight; if(!w||!h)return;
+    this.three.w=w; this.three.h=h; this.three.renderer.setSize(w,h,false);
+    this.three.camera.aspect=w/h; this.three.camera.updateProjectionMatrix();
+  }
+  updateLabels(){
+    const {camera,w,h}=this.three; const v=this._v;
+    for(const nd of this.nodes){ if(!nd.labelEl)continue;
+      v.copy(nd.pos).project(camera);
+      const x=(v.x*0.5+0.5)*w, y=(-v.y*0.5+0.5)*h;
+      const left=nd.labelSide==='left'; const off=left?-12:12;
+      nd.labelEl.style.transform='translate('+(left?'-100%':'0')+',-50%) translate('+(x+off)+'px,'+y+'px)';
+      nd.labelEl.style.opacity=(v.z<1)?'1':'0';
+    }
+  }
+  animate(){
+    if(!this.three){ return; }
+    const now=performance.now(); let dt=(now-this.last)/1000; this.last=now; if(dt>0.05)dt=0.05;
+    if(this.state.source!=='live' && this.state.playing && this.rows){
+      this.acc+=dt; const interval=1/(this.state.speed*2); let guard=0;
+      while(this.acc>=interval && guard<12){ this.acc-=interval; this.advance(); guard++; }
+    }
+    if(this.autoRotate && !this.dragging){ this.cam.theta+=0.05*dt; }
+    this.updateCamera();
+    const k=Math.min(1,dt*4);
+    if(this._act && this._disp){ for(let i=0;i<this._act.length;i++){ this._disp[i]+=(this._act[i]-this._disp[i])*k; } }
+    const t=now*0.001, gs=this.glowStrength;
+    for(const nd of this.nodes){
+      const b=this._disp?this._disp[nd.ai]:0.4;
+      nd.mesh.scale.setScalar(nd.base*(0.7+b*0.7));
+      nd.mesh.material.color.copy(nd.color0).multiplyScalar(0.35+0.65*b);
+      let sc=nd.base*(2.1+b*4.4);
+      if(nd.type==='output' && b>0.5){ sc*=1+(0.5+0.5*Math.sin(t*3))*0.28; }
+      nd.sprite.scale.setScalar(sc);
+      nd.sprite.material.opacity=(0.1+b*0.55)*gs+(nd.type==='output'?0.08:0);
+    }
+    if(this.three.points){
+      const ppos=this.three.ppos, pcol=this.three.pcol;
+      for(let i=0;i<this.parts.length;i++){
+        const p=this.parts[i]; p.t+=p.sp*dt;
+        if(p.t>=1){ p.t=0; let best=p.e,bw=-1;
+          for(let q=0;q<3;q++){ const e=this.edges[(Math.random()*this.edges.length)|0]; const wv=this._disp?this._disp[e.a.ai]:0.5; if(wv>bw){bw=wv;best=e;} }
+          p.e=best; p.sp=0.5+Math.random()*0.8;
+        }
+        const e=p.e,a=e.a.pos,b2=e.b.pos,tt=p.t,o=i*3;
+        ppos[o]=a.x+(b2.x-a.x)*tt; ppos[o+1]=a.y+(b2.y-a.y)*tt; ppos[o+2]=a.z+(b2.z-a.z)*tt;
+        const br=0.45+0.55*(this._disp?this._disp[e.a.ai]:0.5), c=e.a.color0;
+        pcol[o]=c.r*br; pcol[o+1]=c.g*br; pcol[o+2]=c.b*br;
+      }
+      this.three.points.geometry.attributes.position.needsUpdate=true;
+      this.three.points.geometry.attributes.color.needsUpdate=true;
+    }
+    this.updateLabels();
+    this.three.renderer.render(this.three.scene,this.three.camera);
+    this.raf=requestAnimationFrame(this.animate);
+  }
+
+  /* ---------- view ---------- */
+  renderVals(){
+    const st=this.state, r=st.reading, p=st.pred, cl=st.clock;
+    const fmt=(k,v)=>{ if(k==='co2'||k==='light_intensity') return Math.round(v).toLocaleString(); if(k==='humidity'||k==='soil_moisture') return v.toFixed(1); return v.toFixed(2); };
+    const sensors=this.inputs.map(d=>{
+      const v=r[d.key]||0, s=this.stats[d.key];
+      const pct=Math.max(0,Math.min(100,((v-s.min)/((s.max-s.min)||1))*100));
+      return {label:d.label, unit:d.unit, valStr:fmt(d.key,v),
+        dotStyle:'display:inline-block;width:8px;height:8px;border-radius:50%;background:'+d.color+';box-shadow:0 0 8px '+d.color,
+        barStyle:'height:100%;width:'+pct.toFixed(1)+'%;background:'+d.color+';border-radius:99px;transition:width .3s ease'};
+    });
+    const mkDec=(o,prob,pred,actual)=>{
+      const on=pred===1, conf=Math.round((on?prob:1-prob)*100), stateCol=on?o.color:'#5d7568';
+      let actualText,actualCol;
+      if(actual==null){ actualText='LIVE FEED'; actualCol='#7f9e8c'; }
+      else{ const match=(actual===1)===on; actualText=(actual===1?'ACTUAL ON':'ACTUAL OFF')+(match?' ✓':' ✕'); actualCol=match?'#46e08a':'#ff6b5b'; }
+      return {label:o.label, sub:o.sub, state:on?'ON':'OFF', confText:conf+'%', actualText,
+        dotStyle:'display:inline-block;width:9px;height:9px;border-radius:50%;background:'+o.color+';box-shadow:0 0 10px '+o.color,
+        stateStyle:"font-family:'Space Grotesk';font-size:30px;font-weight:700;line-height:1;letter-spacing:1px;color:"+stateCol+";min-width:60px",
+        confStyle:'height:100%;width:'+conf+'%;background:'+o.color+';border-radius:99px;transition:width .3s ease;box-shadow:0 0 10px '+o.color+'aa',
+        actualStyle:'font-size:10px;font-weight:700;letter-spacing:.5px;color:'+actualCol};
+    };
+    const decisions=[ mkDec(this.outputs[0],p.fanProb,p.fanPred,p.fanActual), mkDec(this.outputs[1],p.pumpProb,p.pumpPred,p.pumpActual) ];
+    const influences=this.inputs.slice().sort((a,b)=>b.imp-a.imp).map(d=>({
+      label:d.label, valStr:Math.round(d.imp*100)+'%',
+      barStyle:'height:100%;width:'+(d.imp/0.20*100).toFixed(0)+'%;background:'+d.color+';border-radius:99px;box-shadow:0 0 8px '+d.color+'99'}));
+    const srcMap={live:{label:'LIVE · WEBSOCKET',color:'#46e08a'},csv:{label:'CSV PLAYBACK',color:'#f2c14e'},connecting:{label:'CONNECTING…',color:'#7f9e8c'}};
+    const sm=srcMap[st.source]||srcMap.csv;
+    const speedBtns=[0.5,1,2,4].map(v=>({label:(v===1?'1':v)+'×', on:()=>this.setState({speed:v}),
+      style:"border:none;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;padding:5px 10px;border-radius:7px;transition:.15s;"+(st.speed===v?'background:#46e08a;color:#06120c':'background:transparent;color:#7f9e8c')}));
+    const liveMap={live:{label:'● LIVE',col:'#46e08a'},connecting:{label:'CONNECTING…',col:'#7f9e8c'},csv:{label:'⚡ CONNECT LIVE',col:'#46e08a'}};
+    const lb=liveMap[st.source]||liveMap.csv;
+    return {
+      booting:!st.ready, sensors, decisions, influences,
+      sourceLabel:sm.label,
+      sourceDotStyle:'display:inline-block;width:8px;height:8px;border-radius:50%;background:'+sm.color+';box-shadow:0 0 8px '+sm.color+';animation:ncpulse 2s infinite',
+      sourceTextStyle:'color:'+sm.color+';font-weight:600;letter-spacing:.5px',
+      timeStr:cl.timeStr, dateStr:cl.dateStr,
+      dayGlyph:cl.isDay?'☀':'☾', dayLabel:cl.isDay?'DAY':'NIGHT',
+      dayStyle:'font-size:13px;color:'+(cl.isDay?'#f2c14e':'#9b8cff'),
+      sessionLabel:'SESSION '+(((r.session||0))+1).toString().padStart(2,'0'),
+      idx:st.idx, maxIdx:Math.max(0,st.total-1),
+      counter:(st.idx+1).toLocaleString()+' / '+st.total.toLocaleString(),
+      uaeStr:cl.timeStr+' GST',
+      playGlyph:st.playing?'❚❚':'▶',
+      togglePlay:()=>this.setState(s=>({playing:!s.playing})),
+      onScrub:(e)=>this.seek(parseInt(e.target.value,10)),
+      speedBtns,
+      liveBtn:()=>this.connectLive(),
+      liveBtnLabel:lb.label,
+      liveBtnStyle:"cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:1px;color:"+lb.col+";background:rgba(70,224,138,0.08);border:1px solid rgba(70,224,138,0.25);padding:9px 13px;border-radius:9px;flex:none",
+      toggleRotate:()=>{ this.autoRotate=!this.autoRotate; this.forceUpdate(); },
+      rotateLabel:this.autoRotate?'◍ ORBIT ON':'○ ORBIT OFF'
+    };
+  }
+}
+</script>
+</body>
+</html>
