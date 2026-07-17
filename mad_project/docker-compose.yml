@@ -1,0 +1,148 @@
+name: mad_project
+
+x-mqtt-env: &mqtt-env
+  MQTT_HOST: ${MQTT_HOST:-mosquitto}
+  MQTT_PORT: ${MQTT_PORT:-1885}
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1885:1885"
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h localhost -p 1885 -t '$$SYS/#' -C 1 -W 2 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: mad
+      DOCKER_INFLUXDB_INIT_PASSWORD: madpassword
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUX_ORG:-mad}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUX_BUCKET:-greenhouse}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN:-my-token}
+    volumes:
+      - influx-data:/var/lib/influxdb2
+
+  ingestion:
+    build: ./ingestion
+    container_name: ingestion
+    restart: unless-stopped
+    depends_on:
+      mosquitto:
+        condition: service_started
+      influxdb:
+        condition: service_started
+    environment:
+      <<: *mqtt-env
+      INFLUX_URL: ${INFLUX_URL:-http://influxdb:8086}
+      INFLUX_TOKEN: ${INFLUX_TOKEN:-my-token}
+      INFLUX_ORG: ${INFLUX_ORG:-mad}
+      INFLUX_BUCKET: ${INFLUX_BUCKET:-greenhouse}
+
+  control:
+    build: ./control
+    container_name: control
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      MODEL_PATH: ${MODEL_PATH:-/model/rf_control.pkl}
+    volumes:
+      - ./model:/model
+
+  controller:
+    build: ./controller
+    container_name: controller
+    restart: unless-stopped
+    depends_on:
+      mosquitto:
+        condition: service_started
+      control:
+        condition: service_started
+    environment:
+      <<: *mqtt-env
+      CONTROL_URL: ${CONTROL_URL:-http://control:8000}
+
+  csv_logger:
+    build: ./csv_logger
+    container_name: csv_logger
+    restart: unless-stopped
+    depends_on:
+      mosquitto:
+        condition: service_started
+    environment:
+      <<: *mqtt-env
+      CSV_PATH: ${CSV_PATH:-/data/greenhouse.csv}
+    volumes:
+      - ./data:/data
+
+  simulator:
+    build: ./simulator
+    container_name: simulator
+    restart: unless-stopped
+    depends_on:
+      mosquitto:
+        condition: service_started
+    environment:
+      <<: *mqtt-env
+      SIM_PERIOD: "5"
+
+  dashboard:
+    build: ./dashboard
+    container_name: dashboard
+    restart: unless-stopped
+    depends_on:
+      mosquitto:
+        condition: service_started
+    ports:
+      - "8050:8050"
+    environment:
+      <<: *mqtt-env
+      CSV_PATH: ${CSV_PATH:-/data/greenhouse.csv}
+    volumes:
+      - ./data:/data
+
+  wiring:
+    build: ./wiring
+    container_name: wiring
+    restart: unless-stopped
+    depends_on:
+      mosquitto:
+        condition: service_started
+    ports:
+      - "8888:8888"
+    environment:
+      <<: *mqtt-env
+
+  mobile:
+    build: ./mobile
+    container_name: mobile
+    restart: unless-stopped
+    depends_on:
+      wiring:
+        condition: service_started
+    ports:
+      - "8899:8899"
+    environment:
+      STATUS_URL: ${STATUS_URL:-http://wiring:8888/status}
+    volumes:
+      # gives the mobile app start/stop control over the other MAD containers.
+      # LAN-only convenience — do NOT expose port 8899 to the internet.
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  mosquitto-data:
+  influx-data:
