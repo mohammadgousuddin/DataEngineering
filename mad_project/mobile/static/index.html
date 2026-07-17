@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e14">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>MAD · Greenhouse</title>
+<style>
+  :root{ --bg:#0a0e14; --panel:#0e141c; --grid:#1b2530; --ink:#c7d3e0; --dim:#5d6e80;
+         --ok:#2bd576; --warn:#f5c542; --alert:#ff5252; --cyan:#21d4d4; --blue:#2f81f7; --orange:#ff8a1e; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{ margin:0; background:var(--bg); color:var(--ink);
+        font-family:ui-monospace,'JetBrains Mono',Menlo,monospace;
+        padding-bottom:24px; }
+  .wrap{ max-width:520px; margin:0 auto; padding:12px 12px 32px; }
+  .top{ display:flex; align-items:center; gap:10px; padding:10px 4px; }
+  .top .mark{ color:var(--orange); font-weight:700; }
+  .top h1{ font-size:17px; margin:0; letter-spacing:3px; }
+  .top .sub{ color:var(--dim); font-size:10px; letter-spacing:1px; margin-left:auto; text-align:right; }
+  #banner{ display:none; border-radius:10px; padding:11px 14px; margin:6px 0 10px;
+           font-size:12.5px; font-weight:700; letter-spacing:.5px; }
+  #banner.alert{ display:block; background:rgba(255,82,82,.14); border:1px solid var(--alert); color:var(--alert); }
+  #banner.warn{ display:block; background:rgba(245,197,66,.12); border:1px solid var(--warn); color:var(--warn); }
+  .panel{ border:1px solid var(--grid); border-radius:12px; background:var(--panel); margin-bottom:12px; overflow:hidden; }
+  .phead{ display:flex; align-items:center; gap:8px; padding:9px 13px; border-bottom:1px solid var(--grid);
+          color:var(--dim); font-size:10px; letter-spacing:2px; text-transform:uppercase; }
+  .phead .tag{ margin-left:auto; color:var(--blue); text-transform:none; }
+  .dot{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .dot.on{ background:var(--ok); box-shadow:0 0 8px var(--ok); animation:pulse 2s infinite; }
+  .dot.off{ background:var(--alert); box-shadow:0 0 8px var(--alert); }
+  .dot.idle{ background:var(--dim); }
+  @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:.35} }
+  .staterow{ display:flex; gap:8px; padding:10px 12px; flex-wrap:wrap; }
+  .chip{ display:flex; align-items:center; gap:6px; border:1px solid var(--grid); border-radius:7px;
+         padding:6px 10px; font-size:10.5px; }
+  .chip .k{ color:var(--dim); text-transform:uppercase; }
+  .tiles{ display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:10px; }
+  .tile{ border:1px solid var(--grid); border-radius:10px; padding:10px 12px; }
+  .tile .lab{ color:var(--dim); font-size:9.5px; letter-spacing:1px; text-transform:uppercase; }
+  .tile .val{ font-size:22px; font-weight:700; margin:4px 0 6px; }
+  .bar{ height:5px; border-radius:3px; background:var(--grid); overflow:hidden; }
+  .bar i{ display:block; height:100%; border-radius:3px; transition:width .5s; }
+  .acts{ padding:6px 12px 10px; }
+  .actrow{ display:flex; align-items:center; justify-content:space-between; padding:9px 2px;
+           border-bottom:1px solid var(--grid); font-size:12.5px; }
+  .actrow:last-child{ border-bottom:none; }
+  .pill{ font-weight:700; letter-spacing:2px; font-size:12px; padding:4px 14px; border-radius:6px; border:1px solid var(--grid); color:var(--dim); }
+  .pill.on{ color:#06140b; background:var(--ok); border-color:var(--ok); }
+  .cause{ color:var(--dim); font-size:9.5px; margin-top:2px; }
+  .btns{ display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:10px; }
+  button{ font-family:inherit; font-size:13px; font-weight:700; letter-spacing:1px; border-radius:10px;
+          padding:13px 8px; border:1px solid var(--grid); background:#121a24; color:var(--ink); }
+  button:active{ transform:scale(.97); }
+  button.go{ background:rgba(43,213,118,.13); border-color:var(--ok); color:var(--ok); }
+  button.halt{ background:rgba(255,82,82,.11); border-color:var(--alert); color:var(--alert); }
+  button.mode{ background:rgba(47,129,247,.12); border-color:var(--blue); color:var(--blue); }
+  button:disabled{ opacity:.4; }
+  .svc{ display:flex; flex-wrap:wrap; gap:6px; padding:10px 12px 12px; }
+  .svcchip{ display:flex; align-items:center; gap:6px; border:1px solid var(--grid); border-radius:7px;
+            padding:6px 9px; font-size:10px; }
+  .svcchip button{ padding:2px 7px; font-size:9px; border-radius:5px; letter-spacing:0; }
+  .note{ color:var(--dim); font-size:10px; padding:0 14px 12px; line-height:1.5; }
+  #toast{ position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:#18222e;
+          border:1px solid var(--blue); color:var(--ink); border-radius:9px; padding:10px 16px;
+          font-size:11.5px; display:none; max-width:88vw; z-index:9; }
+  .footer{ text-align:center; color:var(--dim); font-size:9.5px; letter-spacing:1px; margin-top:4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <span class="mark">◆</span><h1>MAD</h1>
+    <div class="sub">greenhouse digital twin<br><span id="clock">—</span></div>
+  </div>
+
+  <div id="banner"></div>
+
+  <div class="panel">
+    <div class="phead"><span class="dot idle" id="livedot"></span> pipeline <span class="tag" id="srcTag">—</span></div>
+    <div class="staterow" id="staterow"></div>
+  </div>
+
+  <div class="panel">
+    <div class="phead">sensors <span class="tag">greenhouse/sensor</span></div>
+    <div class="tiles" id="tiles"></div>
+  </div>
+
+  <div class="panel">
+    <div class="phead">actuators · ai <span class="tag" id="aiTag">—</span></div>
+    <div class="acts" id="acts"></div>
+  </div>
+
+  <div class="panel">
+    <div class="phead">system control <span class="tag">docker</span></div>
+    <div class="btns">
+      <button class="go" onclick="act('/api/system/on','Start ALL services?')">▶ SYSTEM ON</button>
+      <button class="halt" onclick="act('/api/system/off','Stop the stack? (broker + this app stay up)')">■ SYSTEM OFF</button>
+      <button class="mode" onclick="act('/api/mode/sim','Switch to SIMULATOR data?')">SIMULATOR</button>
+      <button class="mode" onclick="act('/api/mode/live','Switch to LIVE Flipper mode? You must run sensor_bridge.py on the host.')">LIVE / FLIPPER</button>
+    </div>
+    <div class="svc" id="svc"></div>
+    <div class="note">Full cold start still needs <b>bash launch.sh</b> once on the host — after that, everything is controllable from here. LIVE mode: stop simulator here, then run <b>python3 sensor_bridge.py</b> on the host.</div>
+  </div>
+
+  <div class="footer" id="foot">connecting…</div>
+</div>
+<div id="toast"></div>
+
+<script>
+const THR = { fan_temp:40, fan_co2:900, fan_hum:20, pump_soil:25, pump_temp:45 };
+const RANGES = { temp_dht:[25,48], temp_ds18:[25,48], humidity:[0,60], soil_moisture:[0,60], co2:[100,1000], light_intensity:[0,11000] };
+let lastAlertKey = "";
+
+function el(id){ return document.getElementById(id); }
+function toast(msg){ const t=el('toast'); t.textContent=msg; t.style.display='block';
+  clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none', 3200); }
+
+async function act(url, confirmMsg){
+  if(confirmMsg && !confirm(confirmMsg)) return;
+  try{ const r = await fetch(url, {method:'POST'}); const j = await r.json();
+       toast(r.ok ? ('OK: ' + url.split('/').slice(-2).join(' ')) : (j.detail || 'failed'));
+  }catch(e){ toast('error: '+e.message); }
+  setTimeout(refreshServices, 800);
+}
+
+function chip(k,v,dot){ return `<span class="chip"><span class="dot ${dot}"></span><span class="k">${k}</span><span>${v}</span></span>`; }
+
+function zone(key, v){
+  if(v==null) return 'var(--dim)';
+  if(key==='temp_dht'||key==='temp_ds18') return v>=THR.fan_temp?'var(--alert)':(v>=THR.fan_temp-2?'var(--warn)':'var(--ok)');
+  if(key==='humidity') return v<=THR.fan_hum?'var(--alert)':(v<=THR.fan_hum+5?'var(--warn)':'var(--ok)');
+  if(key==='co2') return v>=THR.fan_co2?'var(--alert)':(v>=THR.fan_co2-100?'var(--warn)':'var(--ok)');
+  if(key==='soil_moisture') return v<=THR.pump_soil?'var(--alert)':(v<=THR.pump_soil+5?'var(--warn)':'var(--ok)');
+  return 'var(--cyan)';
+}
+
+const LABELS = { temp_dht:['AIR TEMP','°C'], temp_ds18:['PROBE','°C'], humidity:['HUMIDITY','%'],
+                 soil_moisture:['SOIL','%'], co2:['CO₂','ppm'], light_intensity:['LIGHT','lux'] };
+
+function tiles(sensor){
+  let h='';
+  for(const k of Object.keys(LABELS)){
+    const v = sensor ? sensor[k] : null;
+    const [lab,unit]=LABELS[k]; const c=zone(k,v);
+    const [mn,mx]=RANGES[k]; const pct = v==null?0:Math.max(2,Math.min(100,(v-mn)/(mx-mn)*100));
+    h += `<div class="tile"><div class="lab">${lab}</div>
+          <div class="val" style="color:${c}">${v==null?'—':v}<span style="font-size:11px;color:var(--dim)"> ${unit}</span></div>
+          <div class="bar"><i style="width:${pct}%;background:${c}"></i></div></div>`;
+  }
+  el('tiles').innerHTML = h;
+}
+
+function causes(s){
+  const f=[], p=[];
+  if(!s) return [f,p];
+  if(s.temp_dht>=THR.fan_temp) f.push(`AIR ≥ ${THR.fan_temp}°C`);
+  if(s.co2>=THR.fan_co2) f.push(`CO₂ ≥ ${THR.fan_co2}`);
+  if(s.humidity<=THR.fan_hum) f.push(`RH ≤ ${THR.fan_hum}%`);
+  if(s.soil_moisture<=THR.pump_soil) p.push(`SOIL ≤ ${THR.pump_soil}%`);
+  if(s.temp_dht>=THR.pump_temp) p.push(`AIR ≥ ${THR.pump_temp}°C`);
+  return [f,p];
+}
+
+function alerts(st){
+  const b = el('banner');
+  let key='', cls='', msg='';
+  if(!st.live){ key='down'; cls='alert'; msg='⛔ PIPELINE DOWN — no telemetry. Check simulator/bridge.'; }
+  else{
+    const [f,p]=causes(st.sensor);
+    if(f.length||p.length){ key='thr:'+f.concat(p).join(); cls='warn';
+      msg='⚠ THRESHOLD: '+f.concat(p).join(' · '); }
+  }
+  if(!key){ b.className=''; b.style.display='none'; }
+  else{ b.className=cls; b.textContent=msg;
+    if(key!==lastAlertKey){ if(navigator.vibrate) navigator.vibrate([120,60,120]);
+      if(Notification && Notification.permission==='granted') new Notification('MAD', {body:msg}); } }
+  lastAlertKey = key;
+}
+
+async function refresh(){
+  let st;
+  try{ st = await (await fetch('/api/status')).json(); }
+  catch(e){ st = {live:false, backend:false}; }
+  const live = !!st.live;
+  el('livedot').className = 'dot ' + (live?'on':'off');
+  el('srcTag').textContent = live ? (st.source||'—') : 'waiting';
+  const flip = st.flipper||{};
+  el('staterow').innerHTML =
+    chip('state', live?'LIVE':'WAITING', live?'on':'off') +
+    chip('flipper', flip.connected ? (flip.port||'connected') : 'not connected', flip.connected?'on':'off') +
+    chip('mqtt', st.mqtt?'up':'down', st.mqtt?'on':'off') +
+    chip('frames', (st.msgs??0).toLocaleString(), 'idle');
+  tiles(live ? st.sensor : null);
+
+  const cmd = st.command||{};
+  const [cf,cp] = causes(live?st.sensor:null);
+  el('aiTag').textContent = cmd.recommended_action || '—';
+  el('acts').innerHTML = `
+    <div class="actrow"><div>FAN<div class="cause">${cf.join(' · ')||(live?'within limits':'no data')}</div></div>
+      <span class="pill ${cmd.fan_state==='ON'?'on':''}">${cmd.fan_state||'—'}</span></div>
+    <div class="actrow"><div>IRRIGATION PUMP<div class="cause">${cp.join(' · ')||(live?'within limits':'no data')}</div></div>
+      <span class="pill ${cmd.pump_state==='ON'?'on':''}">${cmd.pump_state||'—'}</span></div>`;
+  el('foot').textContent = `uptime ${st.uptime??'—'}s · age ${st.age??'—'}s · MAD mobile`;
+  el('clock').textContent = new Date().toLocaleTimeString();
+  alerts(st);
+}
+
+async function refreshServices(){
+  let d;
+  try{ d = await (await fetch('/api/services')).json(); }catch(e){ d={available:false,services:[]}; }
+  if(!d.available){ el('svc').innerHTML = '<span class="note">docker control unavailable</span>'; return; }
+  el('svc').innerHTML = d.services.map(s=>{
+    const dot = s.status==='running'?'on':(s.status==='missing'?'idle':'off');
+    const btn = s.status==='running'
+      ? `<button onclick="act('/api/services/${s.name}/restart')">↻</button>`
+      : `<button onclick="act('/api/services/${s.name}/start')">▶</button>`;
+    return `<span class="svcchip"><span class="dot ${dot}"></span>${s.name} ${btn}</span>`;
+  }).join('');
+}
+
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+if(window.Notification && Notification.permission==='default')
+  setTimeout(()=>Notification.requestPermission(), 4000);
+
+refresh(); refreshServices();
+setInterval(refresh, 2000);
+setInterval(refreshServices, 6000);
+</script>
+</body>
+</html>
